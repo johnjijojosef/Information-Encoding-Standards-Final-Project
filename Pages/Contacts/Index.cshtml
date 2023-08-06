@@ -1,0 +1,182 @@
+@page
+@using System.Web;
+@model ContactManager.Pages.Contacts.IndexModel
+
+@{
+    ViewData["Title"] = "Index";
+}
+
+<h1>Index</h1>
+
+<p>
+    <a asp-page="Create">Create New</a>
+</p>
+
+
+
+<input type="text" id="searchInput" placeholder="Search by Name or Email">
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.Contact[0].Name)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Contact[0].Address)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Contact[0].City)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Contact[0].State)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Contact[0].Zip)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Contact[0].Email)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Contact[0].Status)
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model.Contact)
+        {
+            <tr>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Name)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Address)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.City)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.State)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Zip)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Email)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Status)
+                </td>
+                <td>
+                    @if ((await AuthorizationService.AuthorizeAsync(
+                   User, item,
+                   ContactOperations.Update)).Succeeded)
+                    {
+                        <a asp-page="./Edit" asp-route-id="@item.ContactId">Edit</a>
+                        <text> | </text>
+                    }
+
+                    <a asp-page="./Details" asp-route-id="@item.ContactId">Details</a>
+
+                    @if ((await AuthorizationService.AuthorizeAsync(
+                   User, item,
+                   ContactOperations.Delete)).Succeeded)
+                    {
+                        <text> | </text>
+                        <a asp-page="./Delete" asp-route-id="@item.ContactId">Delete</a>
+                    }
+
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<script>
+    // JavaScript code to handle the search functionality
+    const searchInput = document.getElementById('searchInput');
+    const table = document.querySelector('table');
+    const rows = table.getElementsByTagName('tr');
+
+    searchInput.addEventListener('input', function () {
+        const searchText = searchInput.value.toLowerCase();
+
+        for (let i = 1; i < rows.length; i++) {
+            const nameColumn = rows[i].getElementsByTagName('td')[0];
+            const emailColumn = rows[i].getElementsByTagName('td')[5];
+
+            const name = nameColumn.textContent.toLowerCase();
+            const email = emailColumn.textContent.toLowerCase();
+
+            if (name.includes(searchText) || email.includes(searchText)) {
+                rows[i].style.display = '';
+            } else {
+                rows[i].style.display = 'none';
+            }
+        }
+    });
+</script>
+<script>
+
+    function generateCsvContent(contacts) {
+        const csvRows = [];
+        const headers = ['Name', 'Address', 'City', 'State', 'Zip', 'Email', 'Status'];
+
+        // Push the headers row
+        csvRows.push(headers.join(','));
+
+        for (const contact of contacts) {
+            const rowData = [
+                contact.name,
+                contact.address,
+                contact.city,
+                contact.state,
+                contact.zip,
+                contact.email,
+                contact.status
+            ];
+            csvRows.push(rowData.join(','));
+        }
+
+        return csvRows.join('\n');
+    }
+
+    // JavaScript code to handle the export functionality
+    function exportToCsv(filename, csvContent) {
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+        if (navigator.msSaveBlob) { // For Internet Explorer
+            navigator.msSaveBlob(blob, filename);
+        } else {
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    }
+
+    // Function to add the export button to the page
+    function addExportButton() {
+        const contacts = @Html.Raw(Json.Serialize(Model.Contact));
+        const csvContent = generateCsvContent(contacts);
+
+        const exportLink = document.createElement('a');
+        exportLink.textContent = 'Export Contacts as CSV';
+        exportLink.style.cursor = 'pointer';
+        exportLink.className = 'export-button';
+        exportLink.addEventListener('click', () => exportToCsv('contacts.csv', csvContent));
+
+        const exportContainer = document.createElement('p');
+        exportContainer.appendChild(exportLink);
+
+        const table = document.querySelector('table');
+        table.insertAdjacentElement('beforebegin', exportContainer);
+    }
+
+    // Wait for the DOM to load before adding the export button
+    document.addEventListener('DOMContentLoaded', addExportButton);
+</script>
